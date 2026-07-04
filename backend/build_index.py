@@ -22,7 +22,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend.rag.chunking import build_all_chunks
 from backend.rag.vector_store import VectorStore
 
-HOTELS_PATH = "data/processed/cleaned_hotels.json"
+HOTELS_PATH = "data/processed/final_hotels.json"
 ATTRACTIONS_PATH = "data/raw/raw_attractions_osm.json"
 DESTINATIONS_PATH = "data/raw/raw_destinations_wikivoyage.json"
 INDEX_OUTPUT_PATH = "data/processed/vector_index"
