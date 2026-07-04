@@ -16,6 +16,25 @@ from typing import Optional
 from backend.rag.retrieval import retrieve
 from backend.rag.generation import generate_answer, format_sources
 
+# Known locations from our data collection - used for simple keyword-based
+# query understanding. Not fancy NLP, just a direct substring check, but it
+# fixes real cases where pure semantic search matches the wrong place (e.g.
+# a hotel literally named "Naivasha House" that's actually in Nairobi).
+KNOWN_LOCATIONS = [
+    "Nairobi", "Mombasa", "Diani", "Naivasha", "Nakuru", "Maasai Mara",
+    "Amboseli", "Watamu", "Malindi", "Kisumu", "Nanyuki", "Lamu",
+    "Zanzibar", "Arusha", "Kampala", "Dar es Salaam",
+]
+
+
+def detect_location(question):
+    """Return the first known location name mentioned in the question, if any."""
+    question_lower = question.lower()
+    for location in KNOWN_LOCATIONS:
+        if location.lower() in question_lower:
+            return location
+    return None
+
 app = FastAPI(title="Travel Africa RAG Assistant")
 
 import os as _os
@@ -59,7 +78,14 @@ def ask(request: AskRequest):
     if not request.question or not request.question.strip():
         raise HTTPException(status_code=400, detail="question must not be empty")
 
-    chunks = retrieve(request.question, top_k=5)
+    location = detect_location(request.question)
+    chunks = retrieve(request.question, top_k=5, filter_location=location)
+
+    # If a location was mentioned but the filtered search found nothing,
+    # fall back to unfiltered search rather than returning empty results.
+    if location and not chunks:
+        chunks = retrieve(request.question, top_k=5)
+
     answer = generate_answer(request.question, chunks)
     sources = format_sources(chunks)
 
