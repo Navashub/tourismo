@@ -1,0 +1,29 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+.env
+
+# Large/generated data - don't bloat the repo, but DO commit final small samples
+# if your grader wants to see actual data without running scripts.
+data/raw/*.json
+!data/raw/.gitkeep
+
+# Keep processed/final datasets IF they're not huge - these are your actual
+# deliverable evidence. Only ignore if truly large (many MB).
+# data/processed/*.json
+
+# Vector store / embeddings cache (Day 3) - usually large binary files
+*.index
+*.faiss
+embeddings_cache/
+
+# OS/editor junk
+.DS_Store
+.vscode/
+*.log
+
+# API keys - NEVER commit these
+.env
+*.key
+config/secrets.py
