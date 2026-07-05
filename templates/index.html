@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel Africa RAG Template</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/css/styles.css">
+</head>
+<body>
+  <main class="hero-shell" aria-label="Travel Africa trip planning assistant landing page">
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="Travel Africa home">Travel Africa<span></span></a>
+
+      <nav class="top-actions" aria-label="User preferences">
+        <button class="pill-control" type="button">KSh <span aria-hidden="true">⌄</span></button>
+        <button class="pill-control lang" type="button"><span class="flag" aria-hidden="true"></span> EN <span aria-hidden="true">⌄</span></button>
+        <button class="profile-control" type="button" aria-label="Open profile menu">
+          <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80" alt="Smiling traveler profile">
+          <span aria-hidden="true">⌄</span>
+        </button>
+      </nav>
+    </header>
+
+    <section class="hero-grid">
+      <div class="hero-copy">
+        <h1>Hey explorer,<br>where are we<br>going today?</h1>
+        <span class="spark spark-one" aria-hidden="true"></span>
+        <span class="spark spark-two" aria-hidden="true"></span>
+        <span class="spark spark-three" aria-hidden="true"></span>
+
+        <p>Discover Kenya &amp; East Africa with live prices<br>and expert trip planning.</p>
+
+        <form class="prompt-card" id="prompt-form" aria-label="Trip planning prompt">
+          <label class="sr-only" for="travel-prompt">Describe your ideal trip</label>
+          <input id="travel-prompt" name="prompt" type="text" value="6 days in Kenya: safari, coast, culture" autocomplete="off">
+          <div class="prompt-tools" aria-label="Prompt tools">
+            <button type="button" aria-label="Attach a file">⌕</button>
+            <button type="button" aria-label="Use voice input">♩</button>
+            <button class="send" type="submit" aria-label="Send prompt">➤</button>
+          </div>
+        </form>
+
+        <div class="quick-actions" aria-label="Suggested prompts">
+          <button type="button" data-prompt="Recommend hotels in Nairobi for business travelers"><span aria-hidden="true">▣</span>Create a new trip</button>
+          <button type="button" data-prompt="What can I explore in Kenya?"><span aria-hidden="true">🌴</span>Explore Kenya</button>
+          <button type="button" data-prompt="Plan a 6-day Kenya trip covering safari, coast, and culture"><span aria-hidden="true">♣</span>Plan a safari</button>
+          <button type="button" data-prompt="Compare hotels in Mombasa and Diani for a weekend trip"><span aria-hidden="true">▲</span>East Africa escapes</button>
+        </div>
+
+        <a class="help-link" href="#results" id="see-features">See how I can help you <span aria-hidden="true">↓</span></a>
+      </div>
+
+      <div class="photo-collage" aria-label="Kenya and East Africa destination collage">
+        <figure class="blob blob-safari">
+          <img src="https://images.unsplash.com/photo-1547970810-dc1eac37d174?auto=format&fit=crop&w=1000&q=85" alt="Elephants walking across an East African savanna with a mountain in the distance">
+        </figure>
+        <figure class="blob blob-coast">
+          <img src="https://images.unsplash.com/photo-1586861635167-e5223aadc9fe?auto=format&fit=crop&w=900&q=85" alt="Turquoise East African coastline with palms and a beach cottage">
+        </figure>
+        <figure class="blob blob-lake">
+          <img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1100&q=85" alt="Blue lake surrounded by lush green hills and bright flowers">
+        </figure>
+      </div>
+    </section>
+
+    <!-- Results panel: hidden until the first question is asked -->
+    <section id="results" class="results-panel" hidden aria-label="Assistant results">
+      <div id="loading-state" class="loading-state" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Searching hotels, attractions, and destinations...</p>
+      </div>
+
+      <div id="answer-block" class="answer-block" hidden>
+        <h2>Answer</h2>
+        <p id="answer-text"></p>
+      </div>
+
+      <div id="cards-block" class="cards-block" hidden>
+        <h3>Recommendations &amp; sources</h3>
+        <div id="cards-grid" class="cards-grid"></div>
+      </div>
+
+      <div id="error-block" class="error-block" hidden>
+        <p>Something went wrong reaching the assistant. Please try again.</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('prompt-form');
+    const input = document.getElementById('travel-prompt');
+    const resultsSection = document.getElementById('results');
+    const loadingState = document.getElementById('loading-state');
+    const answerBlock = document.getElementById('answer-block');
+    const answerText = document.getElementById('answer-text');
+    const cardsBlock = document.getElementById('cards-block');
+    const cardsGrid = document.getElementById('cards-grid');
+    const errorBlock = document.getElementById('error-block');
+
+    async function askQuestion(question) {
+      resultsSection.hidden = false;
+      resultsSection.scrollIntoView({ behavior: 'smooth' });
+
+      loadingState.hidden = false;
+      answerBlock.hidden = true;
+      cardsBlock.hidden = true;
+      errorBlock.hidden = true;
+
+      try {
+        const response = await fetch('/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server responded with ${response.status}`);
+        }
+
+        const data = await response.json();
+        renderResults(data);
+      } catch (err) {
+        console.error(err);
+        errorBlock.hidden = false;
+      } finally {
+        loadingState.hidden = true;
+      }
+    }
+
+    function renderResults(data) {
+      answerText.textContent = data.answer || 'No answer returned.';
+      answerBlock.hidden = false;
+
+      cardsGrid.innerHTML = '';
+      const sources = data.sources || [];
+
+      if (sources.length === 0) {
+        cardsBlock.hidden = true;
+        return;
+      }
+
+      sources.forEach((source) => {
+        const card = document.createElement('div');
+        card.className = 'result-card';
+
+        const typeLabel = document.createElement('span');
+        typeLabel.className = 'result-card-type';
+        typeLabel.textContent = source.type || 'result';
+
+        const name = document.createElement('h4');
+        name.textContent = source.name || 'Unnamed';
+
+        const location = document.createElement('p');
+        location.className = 'result-card-location';
+        location.textContent = source.location || '';
+
+        card.appendChild(typeLabel);
+        card.appendChild(name);
+        card.appendChild(location);
+
+        if (source.source_url) {
+          const link = document.createElement('a');
+          link.href = source.source_url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.className = 'result-card-link';
+          link.textContent = 'View source ↗';
+          card.appendChild(link);
+        }
+
+        cardsGrid.appendChild(card);
+      });
+
+      cardsBlock.hidden = false;
+    }
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const question = input.value.trim();
+      if (question) askQuestion(question);
+    });
+
+    document.querySelectorAll('.quick-actions button[data-prompt]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const prompt = button.getAttribute('data-prompt');
+        input.value = prompt;
+        askQuestion(prompt);
+      });
+    });
+  </script>
+</body>
+</html>
