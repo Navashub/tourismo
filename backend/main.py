@@ -5,6 +5,12 @@ Run from project root:
     uvicorn backend.main:app --reload --port 8000
 """
 
+# Load .env BEFORE importing anything that reads os.environ at import time
+# (embeddings.py and generation.py both read provider/API-key env vars as
+# soon as they're imported, so this has to come first).
+from dotenv import load_dotenv
+load_dotenv()
+
 import json
 import os
 from fastapi import FastAPI, HTTPException
@@ -13,7 +19,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
 
-from backend.rag.retrieval import retrieve
+from backend.rag.retrieval import retrieve, retrieve_diverse
 from backend.rag.generation import generate_answer, format_sources
 
 # Known locations from our data collection - used for simple keyword-based
@@ -79,12 +85,12 @@ def ask(request: AskRequest):
         raise HTTPException(status_code=400, detail="question must not be empty")
 
     location = detect_location(request.question)
-    chunks = retrieve(request.question, top_k=5, filter_location=location)
+    chunks = retrieve_diverse(request.question, filter_location=location, per_type=3)
 
     # If a location was mentioned but the filtered search found nothing,
-    # fall back to unfiltered search rather than returning empty results.
+    # fall back to unfiltered diverse search rather than returning empty results.
     if location and not chunks:
-        chunks = retrieve(request.question, top_k=5)
+        chunks = retrieve_diverse(request.question, per_type=3)
 
     answer = generate_answer(request.question, chunks)
     sources = format_sources(chunks)
