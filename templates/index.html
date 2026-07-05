@@ -75,7 +75,7 @@
 
       <div id="answer-block" class="answer-block" hidden>
         <h2>Answer</h2>
-        <p id="answer-text"></p>
+        <div id="answer-text"></div>
       </div>
 
       <div id="cards-block" class="cards-block" hidden>
@@ -130,8 +130,25 @@
       }
     }
 
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function renderMarkdownLite(text) {
+      // Minimal markdown rendering: escape first (safety), then convert
+      // **bold** to <strong> and blank lines to paragraph breaks. This is
+      // intentionally small - just enough for LLM-style formatting, not a
+      // full markdown parser.
+      const escaped = escapeHtml(text);
+      const bolded = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      const paragraphs = bolded.split(/\n\s*\n/).map((p) => `<p>${p.replace(/\n/g, '<br>')}</p>`);
+      return paragraphs.join('');
+    }
+
     function renderResults(data) {
-      answerText.textContent = data.answer || 'No answer returned.';
+      answerText.innerHTML = renderMarkdownLite(data.answer || 'No answer returned.');
       answerBlock.hidden = false;
 
       cardsGrid.innerHTML = '';
@@ -160,6 +177,27 @@
         card.appendChild(typeLabel);
         card.appendChild(name);
         card.appendChild(location);
+
+        // Show price/rating info directly on the card when available,
+        // instead of forcing a click through to the source for basics.
+        if (source.price_range || source.rating) {
+          const details = document.createElement('div');
+          details.className = 'result-card-details';
+
+          if (source.price_range && source.price_range !== 'unknown') {
+            const priceBadge = document.createElement('span');
+            priceBadge.className = 'result-card-badge';
+            priceBadge.textContent = source.price_range;
+            details.appendChild(priceBadge);
+          }
+          if (source.rating) {
+            const ratingBadge = document.createElement('span');
+            ratingBadge.className = 'result-card-badge rating';
+            ratingBadge.textContent = `★ ${source.rating}`;
+            details.appendChild(ratingBadge);
+          }
+          card.appendChild(details);
+        }
 
         if (source.source_url) {
           const link = document.createElement('a');
